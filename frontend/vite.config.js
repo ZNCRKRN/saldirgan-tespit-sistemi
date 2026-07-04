@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // GitHub Pages'te site https://<kullanici>.github.io/<repo>/ altında yaşar;
+  // CI bu değişkeni "/saldirgan-tespit-sistemi/" olarak geçer. Yerelde "/".
+  base: process.env.VITE_BASE || "/",
   build: {
     rollupOptions: {
       output: {
