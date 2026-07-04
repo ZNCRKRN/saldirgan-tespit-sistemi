@@ -3,6 +3,22 @@
 // Yayında (Cloudflare Pages vb.) backend farklı bir adreste (tünel)
 // çalışır: adres localStorage'da tutulur, boşsa aynı origin kullanılır.
 
+// URL'de ?backend=https://... varsa otomatik kaydet (tek tıkla kurulum).
+// Örn: https://site/?backend=https://xxxx.trycloudflare.com
+try {
+  const qs = new URLSearchParams(location.search);
+  const fromUrl = qs.get("backend");
+  if (fromUrl) {
+    localStorage.setItem("backend_url", fromUrl.trim().replace(/\/+$/, ""));
+    qs.delete("backend");
+    const clean =
+      location.pathname + (qs.toString() ? `?${qs}` : "") + location.hash;
+    history.replaceState(null, "", clean);
+  }
+} catch {
+  /* localStorage kapalıysa sessizce geç */
+}
+
 export const backendBase = () =>
   (localStorage.getItem("backend_url") || "").replace(/\/+$/, "");
 

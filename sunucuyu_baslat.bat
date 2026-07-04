@@ -11,7 +11,7 @@ cd /d "%~dp0backend"
 start "Backend (port 8000)" cmd /k "set PYTHONUTF8=1 && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 rem 2) Cloudflare tuneli baslat: internete acilan ucretsiz adres verir
-start "Cloudflare Tunnel" cmd /k "cloudflared tunnel --url http://localhost:8000"
+start "Cloudflare Tunnel" cmd /k ""C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:8000"
 
 echo Iki pencere acildi:
 echo.
