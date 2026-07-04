@@ -1,0 +1,165 @@
+import React, { useEffect, useState } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import { api } from "../api/client";
+import { Spinner, StatCard } from "../components/ui";
+
+const SEV_COLORS = {
+  critical: "#dc2626",
+  high: "#ef4444",
+  medium: "#f59e0b",
+  low: "#3b82f6",
+};
+
+export default function Reports({ model }) {
+  const [report, setReport] = useState(null);
+  const [hours, setHours] = useState(24);
+
+  useEffect(() => {
+    api.report(hours).then(setReport);
+  }, [hours]);
+
+  if (!report) return <div className="p-8"><Spinner /></div>;
+  const s = report.summary;
+
+  return (
+    <div className="p-8 space-y-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Raporlar</h1>
+          <p className="text-slate-400 text-sm">
+            Sistem performansı ve tehdit istatistikleri
+          </p>
+        </div>
+        <select
+          value={hours}
+          onChange={(e) => setHours(Number(e.target.value))}
+          className="bg-ink-700 border border-white/10 rounded-lg px-4 py-2 text-sm"
+        >
+          <option value={6}>Son 6 saat</option>
+          <option value={24}>Son 24 saat</option>
+          <option value={72}>Son 3 gün</option>
+          <option value={168}>Son 7 gün</option>
+        </select>
+      </header>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Toplam Olay" value={s.total_events} />
+        <StatCard label="Saldırgan Olayı" value={s.attacker_events} accent="text-threat" />
+        <StatCard label="Toplam Uyarı" value={s.total_alerts} accent="text-warn" />
+        <StatCard
+          label="Ort. Tehdit"
+          value={`${Math.round(s.avg_threat_score * 100)}%`}
+          accent="text-accent"
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="card p-5 lg:col-span-2">
+          <h2 className="font-semibold mb-4">Olay Dağılımı (Zaman)</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={report.timeline}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e2740" />
+              <XAxis dataKey="label" stroke="#64748b" fontSize={11} />
+              <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  background: "#0f1522",
+                  border: "1px solid #1e2740",
+                  borderRadius: 12,
+                }}
+              />
+              <Legend />
+              <Bar dataKey="attacker" name="Saldırgan" stackId="a" fill="#ef4444" />
+              <Bar dataKey="suspicious" name="Şüpheli" stackId="a" fill="#f59e0b" />
+              <Bar dataKey="normal" name="Normal" stackId="a" fill="#22c55e" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="font-semibold mb-4">Uyarı Önem Dağılımı</h2>
+          {report.severity_breakdown.length === 0 ? (
+            <p className="text-sm text-slate-500">Henüz uyarı yok.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={report.severity_breakdown}
+                  dataKey="count"
+                  nameKey="severity"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={3}
+                >
+                  {report.severity_breakdown.map((e) => (
+                    <Cell key={e.severity} fill={SEV_COLORS[e.severity] || "#64748b"} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "#0f1522",
+                    border: "1px solid #1e2740",
+                    borderRadius: 12,
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {model && (
+        <div className="card p-5">
+          <h2 className="font-semibold mb-3">Model & Pipeline Bilgisi</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <Info k="Pipeline" v={model.pipeline} />
+            <Info k="Kişi Tespiti (R-CNN)" v={model.person_detector} />
+            <Info k="Poz (OpenPose)" v={model.pose_estimator} />
+            <Info k="Davranış (LSTM+Attention)" v={model.behavior_classifier} />
+            <Info
+              k="Eğitilmiş Model"
+              v={model.using_real_model ? "Aktif" : "Yedek (mock)"}
+            />
+            <Info k="Tehdit Eşiği" v={`${Math.round(model.threat_threshold * 100)}%`} />
+            <Info
+              k="İşlem Birimi"
+              v={model.device === "cuda" ? "GPU (CUDA) ⚡" : "CPU"}
+            />
+            <Info
+              k="Kare Penceresi"
+              v={model.frame_window ? `${model.frame_window} kare` : "—"}
+            />
+            {model.val_accuracy != null && (
+              <Info
+                k="Doğrulama Doğruluğu"
+                v={`${(model.val_accuracy * 100).toFixed(1)}%`}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Info({ k, v }) {
+  return (
+    <div className="bg-ink-700 rounded-lg px-3 py-2">
+      <p className="text-[11px] text-slate-500">{k}</p>
+      <p className="text-slate-200">{v}</p>
+    </div>
+  );
+}

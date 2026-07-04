@@ -1,0 +1,27 @@
+# ── Çekirdek Web/API ───────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+pydantic==2.7.4
+pydantic-settings==2.3.4
+SQLAlchemy==2.0.31
+websockets==12.0
+
+# ── Görüntü İşleme ─────────────────────────────────────────────────
+opencv-python==4.10.0.84
+numpy==1.26.4
+Pillow==10.4.0
+
+# ── Derin Öğrenme (gerçek model takılınca aktif kullanılacak) ───────
+# Eğitilmiş modelin formatına göre BİRİNİ kur. Şimdilik mock dedektör
+# bu paketler olmadan da çalışır; sistem otomatik mock'a düşer.
+#
+# Keras/TensorFlow modeli (.h5 / SavedModel) için:
+# tensorflow==2.16.1
+#
+# PyTorch modeli (.pt / .pth) için:
+# torch==2.3.1
+# torchvision==0.18.1
+#
+# Gerçek OpenPose yerine hafif poz çıkarımı için (opsiyonel):
+# mediapipe==0.10.14

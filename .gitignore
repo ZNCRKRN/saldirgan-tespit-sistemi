@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/storage/*.db
+backend/storage/uploads/*
+backend/storage/snapshots/*
+backend/server*.log
+backend/server*.err
+backend/.env
+
+# Eğitilmiş model ağırlıkları (büyük dosyalar — GitHub 100MB sınırı)
+backend/models/*.h5
+backend/models/*.keras
+backend/models/*.pt
+backend/models/*.pth
+backend/models/behavior_model/
+*.pth
+*.pth.zip
+*.h5
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/vite.log
+frontend/vite.err
+npm-debug.log*
+
+# Editör / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Derleme loglari
+frontend/build.log
+frontend/build.err
+*.output
