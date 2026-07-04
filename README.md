@@ -6,18 +6,23 @@ yapan uçtan uca sistem.
 
 ## 🌐 Yayın ve Otomatik Güncelleme
 
-**Mimari:** Arayüz Cloudflare Pages'te (statik, anında açılır, soğuk başlatma
+**Canlı site:** https://zncrkrn.github.io/saldirgan-tespit-sistemi/
+
+**Mimari:** Arayüz GitHub Pages'te (statik, anında açılır, soğuk başlatma
 yok), backend ise GPU + webcam gerektirdiği için **kendi bilgisayarında**
 çalışır ve Cloudflare Tunnel ile internete açılır.
 
+> Not: Cloudflare Pages (`pages.dev`) Türkiye'de BTK engeli nedeniyle
+> erişilemiyor; bu yüzden arayüz GitHub Pages'te yayınlanıyor.
+
 ```
-[Ziyaretçi] ──> Cloudflare Pages (arayüz)  ──> Cloudflare Tunnel ──> Senin PC'n
-                her push'ta otomatik yayın        ücretsiz, sınırsız    (backend + GPU + webcam)
+[Ziyaretçi] ──> GitHub Pages (arayüz)      ──> Cloudflare Tunnel ──> Senin PC'n
+                her push'ta otomatik yayın      ücretsiz, sınırsız    (backend + GPU + webcam)
 ```
 
 **Güncelleme akışı (otomatik):** kodda değişiklik → `git add -A && git commit
--m "..." && git push` → Cloudflare Pages ~1 dk içinde yeni sürümü yayınlar.
-Başka hiçbir şey yapmana gerek yok.
+-m "..." && git push` → GitHub Actions derleyip ~1 dk içinde yayınlar
+(`.github/workflows/deploy.yml`). Başka hiçbir şey yapmana gerek yok.
 
 **Sunum/demo günü:**
 1. `sunucuyu_baslat.bat`'a çift tıkla (backend + tünel açılır)
