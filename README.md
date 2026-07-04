@@ -4,6 +4,30 @@ TÜBİTAK 2209-A araştırma projesi için geliştirilen, çok açılı güvenli
 kamerası görüntülerinden **derin öğrenme ile saldırgan davranış tespiti**
 yapan uçtan uca sistem.
 
+## 🌐 Yayın ve Otomatik Güncelleme
+
+**Mimari:** Arayüz Cloudflare Pages'te (statik, anında açılır, soğuk başlatma
+yok), backend ise GPU + webcam gerektirdiği için **kendi bilgisayarında**
+çalışır ve Cloudflare Tunnel ile internete açılır.
+
+```
+[Ziyaretçi] ──> Cloudflare Pages (arayüz)  ──> Cloudflare Tunnel ──> Senin PC'n
+                her push'ta otomatik yayın        ücretsiz, sınırsız    (backend + GPU + webcam)
+```
+
+**Güncelleme akışı (otomatik):** kodda değişiklik → `git add -A && git commit
+-m "..." && git push` → Cloudflare Pages ~1 dk içinde yeni sürümü yayınlar.
+Başka hiçbir şey yapmana gerek yok.
+
+**Sunum/demo günü:**
+1. `sunucuyu_baslat.bat`'a çift tıkla (backend + tünel açılır)
+2. Tünel penceresindeki `https://xxxx.trycloudflare.com` adresini kopyala
+3. Yayındaki sitede sol alttaki **⚙ Sunucu** ayarına yapıştır → sistem canlanır
+
+> Not: Eğitilmiş model dosyaları (`*.pth`, 100 MB üstü) GitHub'a yüklenmez;
+> backend zaten yerelde çalıştığı için `backend/models/best_model.pth`
+> makinede durması yeterlidir.
+
 **Pipeline:** `R-CNN (kişi tespiti) → OpenPose (iskelet/poz) → LSTM + Attention
 (zaman serisi davranış analizi) → Saldırgan/Normal sınıflandırma → Uyarı + Raporlama`
 
