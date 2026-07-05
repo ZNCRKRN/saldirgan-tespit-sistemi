@@ -39,3 +39,7 @@ Thumbs.db
 frontend/build.log
 frontend/build.err
 *.output
+
+# Kisisel bilgiler iceren rapor taslaklari (public repoya girmesin)
+SONUC_RAPORU*.docx
+*.docx
