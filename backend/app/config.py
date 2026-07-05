@@ -64,6 +64,20 @@ class Settings(BaseSettings):
     # 12 FPS bütçesini zorlar. Aradaki karelerde son tespitler yeniden
     # kullanılır (görsel olarak fark edilmez).
     detect_stride: int = 2
+    # Hareket-enerjisi kapısı: gerçek kavga sürekli ve yüksek hareket üretir;
+    # el sıkışma/el ele tutuşma/sohbet gibi sahnelerde model yanlışlıkla
+    # yüksek skor verse bile pencere içi hareket düşükse skor bastırılır.
+    # motion_floor: karar skorunun kısılmaya başladığı bölgesel hareket eşiği
+    # (0-255 ölçeğinde ortalama piksel farkı; ~2=konuşma, ~6+=itişme/kavga).
+    motion_gate: bool = True
+    motion_floor: float = 6.0
+    # Gerçek kişi dedektörü (Keypoint R-CNN) sahnede hiç insan bulamazsa
+    # şiddet alarmı üretme (insan yoksa kavga da yoktur → kesin yanlış alarm).
+    require_person_for_alarm: bool = True
+    # Kişiler-arası şiddet en az bu kadar kişi gerektirir. Tek kişi varken
+    # (kameraya el sallama, tek başına hızlı hareket) 'saldırgan' etiketi
+    # 'şüpheli'ye düşürülür; alarm üretilmez ama olay yine izlenebilir.
+    min_persons_for_alarm: int = 2
 
     def ensure_dirs(self) -> None:
         for d in (self.storage_dir, self.upload_dir, self.snapshot_dir, self.model_dir):

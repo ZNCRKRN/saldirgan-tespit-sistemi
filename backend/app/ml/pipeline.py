@@ -124,7 +124,16 @@ class DetectionPipeline:
         fresh_due = (stream_id not in self._last_scene) or (cnt % stride == 0)
         if have_window and fresh_due:
             k = max(2, getattr(settings, "clip_consecutive", 3))
-            raw = self.clip.infer(list(buf)[::fs])
+            window = list(buf)[::fs]
+            raw = self.clip.infer(window)
+            # Hareket kapısı: pencere içi bölgesel hareket düşükse (el ele
+            # tutuşma, sohbet, selamlaşma) modelin skoru bastırılır. Gerçek
+            # kavga sürekli yüksek hareket ürettiğinden etkilenmez.
+            if getattr(settings, "motion_gate", True):
+                motion = self._motion_energy(window)
+                floor = max(0.1, getattr(settings, "motion_floor", 6.0))
+                if motion < floor:
+                    raw *= (motion / floor) ** 2
             raws = self._raw_scores.setdefault(stream_id, deque(maxlen=k))
             raws.append(raw)
             # Anlık tepeler (el sallama, kameraya yaklaşma...) yanlış alarm
@@ -139,6 +148,30 @@ class DetectionPipeline:
             self._last_scene[stream_id] = decision
         # Pencere henüz dolmadıysa None (ısınma); sonra son skoru ver.
         return self._last_scene.get(stream_id) if have_window else None
+
+    @staticmethod
+    def _motion_energy(frames: list[np.ndarray]) -> float:
+        """Pencerenin 'sürekli bölgesel hareket' ölçüsü (0-255 ölçeğinde).
+
+        Kareler küçültülüp griye çevrilir; ardışık kare farkları 8x8 hücrede
+        ortalanır ve her kare çiftinin EN hareketli hücresi alınır (uzaktaki/
+        küçük bir kavga da kendi hücresini aydınlatır). Pencere genelinde
+        MEDYAN kullanılır: tek anlık hamle (el uzatma) medyanı yükseltemez,
+        sürekli hareket (kavga) yükseltir.
+        """
+        if len(frames) < 2:
+            return 0.0
+        grays = [
+            cv2.cvtColor(cv2.resize(f, (64, 64)), cv2.COLOR_BGR2GRAY).astype(np.float32)
+            for f in frames
+        ]
+        peaks = []
+        for a, b in zip(grays, grays[1:]):
+            diff = np.abs(b - a)
+            # 8x8 hücre ortalamaları (64/8=8 piksellik bloklar)
+            cells = diff.reshape(8, 8, 8, 8).mean(axis=(1, 3))
+            peaks.append(float(cells.max()))
+        return float(np.median(peaks))
 
     def reset_stream(self, stream_id: str) -> None:
         """Bir akış kapandığında tamponunu temizle."""
@@ -197,6 +230,16 @@ class DetectionPipeline:
         scene_label = self._scene_label(scene_score) if real else None
         scene_action = self._scene_action(scene_score) if real else None
 
+        # Kişiler-arası şiddet en az 2 kişi gerektirir: dedektör güvenilirken
+        # sahnede tek kişi varsa (kameraya el sallama, selamlama, tek başına
+        # hızlı hareket) 'saldırgan' etiketini 'şüpheli'ye düşür.
+        detector_reliable = getattr(self.person_detector, "provides_keypoints", False)
+        if (real and scene_label == "attacker" and detector_reliable
+                and len(persons) < getattr(settings, "min_persons_for_alarm", 2)):
+            scene_score = min(scene_score, settings.threat_threshold * 0.99)
+            scene_label = "suspicious"
+            scene_action = "şüpheli hareket (tek kişi)"
+
         for person in persons:
             # 3) Poz/iskelet: dedektör GERÇEK keypoint verdiyse onu koru;
             #    vermediyse (HOG/demo) yedek tahminciyle doldur.
@@ -225,8 +268,14 @@ class DetectionPipeline:
 
         # Gerçek model sahneyi şüpheli/saldırgan buldu ama hiç kişi
         # tespit edilemediyse, olayın kaydı/uyarısı düşmesin diye tam-kare
-        # temsili bir tespit üret.
-        if real and not persons and scene_score >= settings.threat_threshold * 0.6:
+        # temsili bir tespit üret. İSTİSNA: kişi dedektörü gerçekse
+        # (Keypoint R-CNN) ve sahnede insan yoksa kavga da olamaz —
+        # temsili tespit üretmek kesin yanlış alarm olur, üretme.
+        block_no_person = detector_reliable and getattr(
+            settings, "require_person_for_alarm", True
+        )
+        if (real and not persons and not block_no_person
+                and scene_score >= settings.threat_threshold * 0.6):
             h, w = frame.shape[:2]
             persons = [PersonDetection(
                 bbox=BBox(2, 2, w - 4, h - 4), score=1.0, track_id=0,

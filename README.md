@@ -1,129 +1,132 @@
 # Kapalı Alanlarda Derin Öğrenme Tabanlı Saldırgan Tespiti
 
-TÜBİTAK 2209-A araştırma projesi için geliştirilen, çok açılı güvenlik
-kamerası görüntülerinden **derin öğrenme ile saldırgan davranış tespiti**
-yapan uçtan uca sistem.
+TÜBİTAK 2209-A araştırma projesi: güvenlik kamerası görüntülerinden
+**derin öğrenme ile gerçek zamanlı saldırgan/şiddet tespiti** yapan
+uçtan uca sistem.
 
-## 🌐 Yayın ve Otomatik Güncelleme
+- **Şiddet tespiti:** ResNet50 + BiLSTM + Attention (PyTorch) — "Real Life
+  Violence Situations" veri setiyle (2000 video) eğitildi, doğrulama
+  doğruluğu **%97.7**
+- **Kişi tespiti + iskelet:** Keypoint R-CNN (torchvision) — 17 noktalı
+  COCO insan iskeleti
+- **Arayüz:** canlı izleme, uyarılar, olay geçmişi, raporlar, video analizi
 
-**Canlı site:** https://zncrkrn.github.io/saldirgan-tespit-sistemi/
+---
 
-**Mimari:** Arayüz GitHub Pages'te (statik, anında açılır, soğuk başlatma
-yok), backend ise GPU + webcam gerektirdiği için **kendi bilgisayarında**
-çalışır ve Cloudflare Tunnel ile internete açılır.
+## 🚀 Hızlı Başlangıç (önerilen — tek tık)
 
-> Not: Cloudflare Pages (`pages.dev`) Türkiye'de BTK engeli nedeniyle
-> erişilemiyor; bu yüzden arayüz GitHub Pages'te yayınlanıyor.
+**Gereksinim:** [Python 3.10–3.12](https://www.python.org/downloads/)
+(kurulumda *"Add Python to PATH"* işaretli olmalı). Başka hiçbir şey
+kurmanıza gerek yok — arayüz derlenmiş halde pakete dahildir.
 
+1. Projeyi indirin:
+   **Code → Download ZIP** (veya `git clone https://github.com/ZNCRKRN/saldirgan-tespit-sistemi.git`)
+   ve bir klasöre çıkarın.
+2. **`baslat.bat`** dosyasına çift tıklayın.
+   - İlk çalıştırmada paketler kurulur ve eğitilmiş model (~233 MB)
+     otomatik indirilir — internet hızına göre 5–10 dk sürer, **tek seferlik**.
+   - Sonraki açılışlar ~30 saniyedir.
+3. Tarayıcı otomatik açılır: **http://localhost:8000**
+
+> 💡 **GPU'nuz varsa (NVIDIA):** varsayılan kurulum CPU'da çalışır (tam
+> işlevsel, canlı akış daha yavaş skorlanır). ~19 kat hız için kurulum
+> bittikten sonra bir kez şunu çalıştırın:
+> ```
+> .venv\Scripts\pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
+> ```
+
+### İlk kullanım — 2 dakikada deneme
+
+1. Açılışta **"Canlı Webcam"** kamerası hazırdır → **Canlı İzleme**
+   sayfasında bilgisayarınızın kamerası açılır. İlk ~5 sn "MODEL ISINIYOR…"
+   yazar, sonra sol üstte canlı sahne skoru (`SAHNE: NORMAL %2` gibi) akar.
+2. **Video Analizi** sayfasından herhangi bir video (mp4/avi) yükleyin —
+   sistem pencere pencere analiz edip şiddet içerip içermediğini raporlar.
+3. **Kameralar** sayfasından RTSP/IP kamera veya video dosyası
+   ekleyebilirsiniz (sayfadaki "Nasıl bağlanır?" rehberine bakın).
+
+---
+
+## Elle Kurulum (geliştirici)
+
+```bash
+# Backend
+cd backend
+python -m venv .venv
+.venv\Scripts\activate              # Windows
+pip install -r requirements.txt
+# Model: https://github.com/ZNCRKRN/saldirgan-tespit-sistemi/releases
+# adresinden best_model.pth indirin → backend/models/ içine koyun
+python run.py                        # http://localhost:8000 (arayüz + API)
+
+# Frontend'i değiştirecekseniz (opsiyonel — hazır derlenmişi pakette var)
+cd frontend
+npm install
+npm run dev                          # http://localhost:5173 (canlı geliştirme)
+npm run build                        # dist/ güncellenir
 ```
-[Ziyaretçi] ──> GitHub Pages (arayüz)      ──> Cloudflare Tunnel ──> Senin PC'n
-                her push'ta otomatik yayın      ücretsiz, sınırsız    (backend + GPU + webcam)
-```
-
-**Güncelleme akışı (otomatik):** kodda değişiklik → `git add -A && git commit
--m "..." && git push` → GitHub Actions derleyip ~1 dk içinde yayınlar
-(`.github/workflows/deploy.yml`). Başka hiçbir şey yapmana gerek yok.
-
-**Sunum/demo günü:**
-1. `sunucuyu_baslat.bat`'a çift tıkla (backend + tünel açılır)
-2. Tünel penceresindeki `https://xxxx.trycloudflare.com` adresini kopyala
-3. Yayındaki sitede sol alttaki **⚙ Sunucu** ayarına yapıştır → sistem canlanır
-
-> Not: Eğitilmiş model dosyaları (`*.pth`, 100 MB üstü) GitHub'a yüklenmez;
-> backend zaten yerelde çalıştığı için `backend/models/best_model.pth`
-> makinede durması yeterlidir.
-
-**Pipeline:** `R-CNN (kişi tespiti) → OpenPose (iskelet/poz) → LSTM + Attention
-(zaman serisi davranış analizi) → Saldırgan/Normal sınıflandırma → Uyarı + Raporlama`
-
-> Eğitilmiş modeliniz henüz yokken sistem **yedek (mock) modda uçtan uca
-> çalışır**. Modelinizi `backend/models/` klasörüne bıraktığınızda otomatik
-> olarak gerçek modele geçer (bkz. `backend/models/README.md`).
 
 ---
 
 ## Mimari
 
 ```
-tübitak2209/
+Kare akışı ──> Keypoint R-CNN ──────────> kişi kutuları + 17-nokta iskelet
+        │                                          │
+        └──> 20 karelik pencere (~5 sn)            ▼
+             ResNet50+BiLSTM+Attention ──> sahne şiddet skoru (0-1)
+                                                   │
+             yanlış-alarm filtreleri  <────────────┘
+             (ısınma, 4-pencere doğrulama,
+              hareket-enerjisi kapısı, kişi şartı)
+                                                   │
+                                                   ▼
+             etiketleme ──> uyarı + veritabanı + snapshot ──> arayüz (WS)
+```
+
+```
 ├── backend/                 FastAPI + ML pipeline (Python)
 │   ├── app/
-│   │   ├── main.py          Uygulama + CORS + statik snapshot
-│   │   ├── config.py        Ayarlar (eşik, sequence_length, FPS…)
-│   │   ├── database.py      SQLite + seed
-│   │   ├── models.py        Camera / Event / Alert tabloları
-│   │   ├── crud.py          Olay & uyarı kaydı, rapor sorguları
+│   │   ├── main.py          Uygulama + arayüz sunumu (SPA) + CORS
+│   │   ├── config.py        Eşikler ve tüm ayarlar (açıklamalı)
+│   │   ├── database.py      SQLite + başlangıç kaydı
 │   │   ├── routers/         cameras, events, reports, stream(ws)
 │   │   └── ml/
-│   │       ├── pipeline.py            Orkestratör + görselleştirme
-│   │       ├── person_detector.py     Aşama 1 — R-CNN (yedek: HOG)
-│   │       ├── pose_estimator.py      Aşama 2 — OpenPose (yedek: sentetik)
-│   │       ├── behavior_classifier.py Aşama 3 — LSTM+Attention  ← MODEL BURAYA
-│   │       ├── tracker.py             Kişi takibi (zaman serisi)
-│   │       └── demo_source.py         Kamerasız demo sahnesi
-│   └── models/              ← eğitilmiş ağırlıklar buraya
+│   │       ├── pipeline.py            Orkestratör + filtreler + çizim
+│   │       ├── violence_classifier.py Eğitilmiş şiddet modeli sarmalayıcı
+│   │       ├── person_detector.py     Keypoint R-CNN (yedek: HOG)
+│   │       └── tracker.py             Kişi takibi
+│   └── models/best_model.pth          ← eğitilmiş ağırlıklar (Releases'ten)
 └── frontend/                React + Vite + Tailwind + Recharts
-    └── src/pages/           Dashboard, LiveMonitor, Alerts, Events,
-                             Reports, Cameras, VideoAnalysis
+    └── dist/                Derlenmiş arayüz (pakete dahil)
 ```
 
 ---
 
-## Kurulum & Çalıştırma
+## Yanlış Alarm Önlemleri
 
-### 1) Backend
+Gerçek sahalarda en kritik sorun yanlış alarmdır; sistem 4 katmanlı filtre uygular:
 
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
-python run.py                    # http://localhost:8000  (API docs: /docs)
-```
-
-İlk açılışta SQLite veritabanı oluşturulur ve 3 örnek kamera eklenir.
-
-### 2) Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev                      # http://localhost:5173
-```
-
-Vite, `/api`, `/snapshots` ve `/ws` isteklerini otomatik olarak backend'e
-(`localhost:8000`) yönlendirir.
-
-Tarayıcıda **http://localhost:5173** → *Canlı İzleme* sekmesinde demo akışı
-ve saldırgan tespiti anında görünür.
-
----
-
-## Eğitilmiş Modeli Bağlama
-
-`backend/models/` klasörüne şunlardan birini koymanız yeterli:
-
-| Çerçeve | Dosya |
+| Katman | Ne yapar |
 |---|---|
-| Keras/TensorFlow | `behavior_model.h5` veya `behavior_model.keras` |
-| PyTorch | `behavior_model.pt` veya `behavior_model.pth` |
+| Isınma | İlk ~5 sn tampon dolarken alarm üretilmez |
+| Zaman örnekleme | Modele eğitimdeki gibi ~5 sn'ye yayılmış 20 kare verilir |
+| Ardışık doğrulama | Alarm için son **4 çıkarım penceresinin tamamı** eşiği (%80) geçmeli (~3 sn sürekli şiddet) |
+| Hareket kapısı | Pencere içi bölgesel hareket düşükse (el sıkışma, sohbet, el ele tutuşma) skor bastırılır |
+| Kişi şartı | Keypoint R-CNN sahnede insan bulamazsa şiddet alarmı üretilmez |
 
-Detaylar ve beklenen giriş/çıkış formatı: **`backend/models/README.md`**.
-Giriş/çıkış şekliniz farklıysa `app/ml/behavior_classifier.py` içindeki
-`_prepare` / `_interpret` metotlarını uyarlayın. Gerçek R-CNN ve OpenPose'u
-da `person_detector.py` / `pose_estimator.py` içindeki ilgili sınıflara
-takabilirsiniz.
+Eşikler `backend/app/config.py` içinde açıklamalarıyla birlikte ayarlanabilir.
 
 ---
 
-## Özellikler (forma karşılık gelir)
+## Özellikler
 
-- **Canlı izleme** — WebSocket ile gerçek zamanlı kare + tespit (bbox, iskelet, skor)
-- **Uyarı sistemi** (form 2.5) — saldırgan tespitinde anlık uyarı sinyali + onaylama
-- **Veri kaydı** (form 2.6) — olay/uyarı veritabanı + snapshot arşivi
-- **Raporlama** (form 2.6.3) — zaman çizelgesi, önem dağılımı, istatistik grafikleri
-- **Video analizi** (İP 4) — kayıtlı video yükleyip toplu test-doğrulama
-- **Kamera yönetimi** — webcam / RTSP-HTTP URL / demo kaynak
+- **Canlı izleme** — WebSocket ile gerçek zamanlı kare + tespit (kutu, iskelet, skor çubuğu)
+- **Uyarı sistemi** — saldırgan tespitinde anlık uyarı + operatör onayı
+- **Veri kaydı** — olay/uyarı veritabanı (SQLite) + otomatik snapshot arşivi
+- **Raporlama** — zaman çizelgesi, önem dağılımı, model bilgisi panelleri
+- **Video analizi** — kayıtlı video yükleyip toplu test-doğrulama
+- **Kamera yönetimi** — webcam / RTSP / HTTP / video dosyası + bağlantı rehberi
 
 ---
 
@@ -133,12 +136,22 @@ takabilirsiniz.
 |---|---|---|
 | GET | `/api/health` | Sağlık kontrolü |
 | GET/POST/PATCH/DELETE | `/api/cameras` | Kamera CRUD |
-| GET | `/api/events` | Olay geçmişi (filtreli) |
-| GET | `/api/alerts` | Uyarılar |
+| GET | `/api/events` · `/api/alerts` | Olay geçmişi, uyarılar |
 | POST | `/api/alerts/{id}/ack` | Uyarı onaylama |
-| GET | `/api/reports` | Tam rapor (özet+zaman+önem) |
-| GET | `/api/reports/model-status` | Model/pipeline durumu |
+| GET | `/api/reports` · `/api/reports/model-status` | Rapor + model durumu |
 | POST | `/api/analyze` | Video yükle & analiz et |
 | WS | `/ws/stream/{camera_id}` | Canlı akış |
 
-Tam etkileşimli dokümantasyon: **http://localhost:8000/docs**
+Etkileşimli dokümantasyon: **http://localhost:8000/docs**
+
+---
+
+## Bilinen Sınırlar (dürüst değerlendirme)
+
+- Model RLVS (internet videoları) ile eğitildi; sabit CCTV açılarında
+  **alan farkı (domain gap)** olabilir. Yanlış alarm filtreleri bunu büyük
+  ölçüde telafi eder; kalıcı çözüm hedef ortam videolarıyla ince ayardır.
+- Raporlanan %97.7 doğrulama kümesi başarımıdır (video düzeyinde ayrılmış,
+  sızıntısız split).
+- CPU'da canlı akış skorlaması seyrekleşir (~2-3 sn'de bir); video analizi
+  her donanımda tam çalışır.

@@ -12,16 +12,10 @@ opencv-python==4.10.0.84
 numpy==1.26.4
 Pillow==10.4.0
 
-# ── Derin Öğrenme (gerçek model takılınca aktif kullanılacak) ───────
-# Eğitilmiş modelin formatına göre BİRİNİ kur. Şimdilik mock dedektör
-# bu paketler olmadan da çalışır; sistem otomatik mock'a düşer.
-#
-# Keras/TensorFlow modeli (.h5 / SavedModel) için:
-# tensorflow==2.16.1
-#
-# PyTorch modeli (.pt / .pth) için:
-# torch==2.3.1
-# torchvision==0.18.1
-#
-# Gerçek OpenPose yerine hafif poz çıkarımı için (opsiyonel):
-# mediapipe==0.10.14
+# ── Derin Öğrenme ───────────────────────────────────────────────────
+# Eğitilmiş şiddet modeli (ResNet50+BiLSTM+Attention) ve Keypoint R-CNN
+# için gereklidir. Varsayılan pip paketi CPU'da çalışır (yavaş ama tam
+# işlevsel); NVIDIA GPU'da ~19x hız için kurulumdan SONRA şunu çalıştırın:
+#   pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
+torch==2.3.1
+torchvision==0.18.1

@@ -13,8 +13,11 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:  # noqa: BLE001
         pass
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
@@ -70,3 +73,23 @@ app.include_router(stream.router)
 @app.get("/api/health", tags=["system"])
 def health():
     return {"status": "ok", "app": settings.app_name, "version": settings.app_version}
+
+
+# ── Derlenmiş arayüzü (frontend/dist) aynı sunucudan sun ────────────
+# Böylece sistemi indiren kişi Node/npm kurmadan tek adresten kullanır:
+# http://localhost:8000  → arayüz + API + WebSocket bir arada.
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if (_FRONTEND_DIST / "index.html").exists():
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa(full_path: str):
+        """SPA fallback: dosya varsa onu, yoksa index.html'i döndür.
+
+        /api, /ws, /snapshots yolları yukarıdaki router'larda eşleştiği için
+        buraya düşmez; burası yalnızca arayüz sayfalarını karşılar.
+        """
+        candidate = _FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")

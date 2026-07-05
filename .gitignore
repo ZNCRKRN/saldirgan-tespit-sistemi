@@ -22,7 +22,8 @@ backend/models/behavior_model/
 
 # Node / Frontend
 node_modules/
-frontend/dist/
+# NOT: frontend/dist commit EDİLİR — indiren kişi Node/npm kurmadan
+# backend'in sunduğu hazır arayüzü kullanır (bkz. app/main.py SPA).
 frontend/vite.log
 frontend/vite.err
 npm-debug.log*

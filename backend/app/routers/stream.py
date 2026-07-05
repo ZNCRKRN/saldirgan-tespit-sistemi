@@ -197,15 +197,19 @@ async def analyze_video(
 
     if pipeline.clip is not None:
         # ── Gerçek model: videoyu pencerelere bölüp her birini sınıflandır ──
+        # Eğitim dağılımıyla uyum: model ~5 sn'ye eşit yayılmış 20 kare
+        # gördü; örnekleme adımı 20 karenin ~5 sn'yi kapsamasına göre seçilir.
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        step = max(1, round(fps / 4))
         frames = []
         idx = 0
         while True:
             ok, frame = cap.read()
             if not ok:
                 break
-            idx += 1
-            if idx % 2 == 0:  # hız için 2'de 1 örnekle
+            if idx % step == 0:
                 frames.append(frame)
+            idx += 1
         cap.release()
 
         n = pipeline.clip.num_frames
@@ -218,6 +222,13 @@ async def analyze_video(
 
         for w in windows:
             score = pipeline.clip.infer(w)
+            # Canlı akışla aynı hareket-enerjisi kapısı: düşük hareketli
+            # pencerelerde (sohbet, el sıkışma) skor bastırılır.
+            if settings.motion_gate:
+                m = pipeline._motion_energy(w)
+                floor = max(0.1, settings.motion_floor)
+                if m < floor:
+                    score *= (m / floor) ** 2
             max_threat = max(max_threat, score)
             mid = w[len(w) // 2]
             result = pipeline.process(mid, scene_score=score)
