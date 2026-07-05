@@ -229,9 +229,11 @@ async def analyze_video(
                 floor = max(0.1, settings.motion_floor)
                 if m < floor:
                     score *= (m / floor) ** 2
-            max_threat = max(max_threat, score)
             mid = w[len(w) // 2]
             result = pipeline.process(mid, scene_score=score)
+            # Rapor edilen skor filtre SONRASI değer olsun ki karar
+            # ("Temiz") ile çelişmesin (tek kişi kuralı skoru düşürebilir).
+            max_threat = max(max_threat, result.max_threat)
             if result.has_attacker:
                 attacker_windows += 1
             alert = crud.record_frame_result(db, result, camera_id=camera_id)
