@@ -132,7 +132,7 @@ async def stream(websocket: WebSocket, camera_id: int):
                         scene_score=scene, stream_id=str(camera_id),
                     )
 
-            annotated = pipeline.annotate(frame, result)
+            annotated = pipeline.annotate(frame, result, stream_id=str(camera_id))
 
             # Saldırgan/şüpheli ise kalıcı kayıt + uyarı
             alert_payload = None

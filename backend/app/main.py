@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, Response
 from .config import settings
 from .database import init_db
 from .ml.pipeline import get_pipeline
-from .routers import cameras, events, reports, stream
+from .routers import cameras, events, preprocess, reports, stream
 
 
 @asynccontextmanager
@@ -78,6 +78,7 @@ def serve_snapshot(fname: str):
 
 app.include_router(cameras.router)
 app.include_router(events.router)
+app.include_router(preprocess.router)
 app.include_router(reports.router)
 app.include_router(stream.router)
 

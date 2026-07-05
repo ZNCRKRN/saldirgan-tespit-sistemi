@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     # Snapshot görüntülerini diskte AES-128 (Fernet) ile şifreli sakla
     # (form 2.6.1). Anahtar: storage/.snapshot_key (ilk açılışta üretilir).
     encrypt_snapshots: bool = True
+    # Ön işleme görselleştirmesi (form 2.3): canlı akışta MOG2 arka plan
+    # ayrıştırma + hareketli nesne bölütleme sonucu çizilir (hareket kutuları
+    # + sol-altta maske önizlemesi). Sahne sınıflandırıcısı ham kareyle
+    # çalıştığından bu adım yalnızca görsel/dikkat amaçlıdır, kararı ETKİLEMEZ.
+    show_foreground: bool = True
 
     def ensure_dirs(self) -> None:
         for d in (self.storage_dir, self.upload_dir, self.snapshot_dir, self.model_dir):

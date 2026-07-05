@@ -16,6 +16,7 @@ from ..config import settings
 from .behavior_classifier import build_behavior_classifier
 from .person_detector import build_person_detector
 from .pose_estimator import build_pose_estimator
+from .preprocess import FramePreprocessor
 from .tracker import CentroidTracker
 from .types import BBox, FrameResult, PersonDetection, SKELETON_EDGES
 from .violence_classifier import build_violence_classifier
@@ -36,6 +37,9 @@ class DetectionPipeline:
         # Gerçek eğitilmiş şiddet modeli (sahne düzeyi). Yoksa None → sezgisel.
         self.clip = build_violence_classifier()
         self.tracker = CentroidTracker(sequence_length=settings.sequence_length)
+        # Ön işleme (form 2.3): arka plan ayrıştırma + hareketli nesne bölütleme.
+        # Yalnızca görselleştirme/dikkat amaçlı — model girdisini etkilemez.
+        self.pre = FramePreprocessor()
         self._frame_index = 0
         # Akış (kamera) başına kare tamponu ve son sahne skoru önbelleği
         self._buffers: dict[str, deque] = {}
@@ -237,6 +241,7 @@ class DetectionPipeline:
         self._raw_scores.pop(stream_id, None)
         self._last_persons.pop(stream_id, None)
         self._det_counters.pop(stream_id, None)
+        self.pre.reset(stream_id)
         for streams in self._zone_scores.values():
             streams.pop(stream_id, None)
 
@@ -349,9 +354,25 @@ class DetectionPipeline:
             result.model_name = self.clip.name if self.clip else ""
         return result
 
-    def annotate(self, frame: np.ndarray, result: FrameResult) -> np.ndarray:
-        """Tespit sonuçlarını kare üzerine çiz (kutu + iskelet + etiket)."""
+    def annotate(self, frame: np.ndarray, result: FrameResult,
+                 stream_id: str | None = None) -> np.ndarray:
+        """Tespit sonuçlarını kare üzerine çiz (kutu + iskelet + etiket).
+
+        `stream_id` verilir ve `settings.show_foreground` açıksa, form 2.3'teki
+        ARKA PLAN AYRIŞTIRMA (MOG2) + hareketli nesne BÖLÜTLEME sonucu da
+        çizilir (hareketli bölge kutuları + sol-altta maske önizlemesi). Bu
+        katman yalnızca görseldir; şiddet skorunu/kararını ETKİLEMEZ.
+        """
         out = frame.copy()
+
+        # ── Ön işleme görselleştirmesi (form 2.3) ──────────────────────
+        if stream_id is not None and getattr(settings, "show_foreground", True):
+            try:
+                mask = self.pre.foreground_mask(frame, stream_id)
+                boxes = self.pre.segment_moving_regions(mask)
+                out = self.pre.draw_foreground(out, mask, boxes)
+            except Exception:  # noqa: BLE001 — görselleştirme akışı bozmasın
+                pass
 
         # ── Sahne durumu çubuğu (gerçek model aktifken sürekli görünür) ──
         # Kullanıcı sistemin "canlı" olduğunu her an görsün diye skor,
