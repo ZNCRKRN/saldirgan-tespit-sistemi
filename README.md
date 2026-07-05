@@ -103,6 +103,30 @@ Kare akışı ──> Keypoint R-CNN ──────────> kişi kutul
 
 ---
 
+## Çok Açılı Füzyon
+
+Aynı alanı gören kameralara **Kameralar** sayfasından aynı "Bölge" adı
+verilir (ör. `giris-holu`). Bölgedeki kameraların **en yüksek güncel sahne
+skoru** tüm açılara yansıtılır: saldırı bir açıdan görünmese bile diğer
+açıdan yakalandığında bölgedeki tüm kameralar alarma geçer — başvuru
+formundaki "çok açılı video analizi" hedefinin gerçeklenmesidir.
+
+## Veri Güvenliği
+
+- Tespit snapshot'ları (kişisel veri içeren görüntüler) diskte
+  **AES-128 (Fernet) ile şifreli** saklanır (`.enc`); arayüze sunulurken
+  bellekte çözülür. Anahtar: `backend/storage/.snapshot_key`
+  (ilk açılışta üretilir, repo'ya girmez).
+- Veritabanında kişisel veri tutulmaz; yalnızca olay meta verileri
+  (zaman, etiket, skor) saklanır.
+- Tüm görüntülere tarih/saat damgası basılır (kayıt bütünlüğü).
+
+## Test-Doğrulama (İş Paketi 4)
+
+60 senaryoluk (30 şiddet + 30 normal) tekrarlanabilir doğrulama çalışmasının
+sonuçları: **[docs/TEST_RAPORU.md](docs/TEST_RAPORU.md)**. Arayüzdeki
+Raporlar sayfasından da güncel sistem raporu HTML olarak indirilebilir.
+
 ## Yanlış Alarm Önlemleri
 
 Gerçek sahalarda en kritik sorun yanlış alarmdır; sistem 4 katmanlı filtre uygular:

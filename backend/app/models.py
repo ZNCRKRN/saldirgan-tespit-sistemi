@@ -23,6 +23,9 @@ class Camera(Base):
     location: Mapped[str] = mapped_column(String(120), default="")
     # "0" => yerel webcam indexi, bir RTSP/HTTP URL, "demo" => simülasyon
     source: Mapped[str] = mapped_column(String(255), default="demo")
+    # Çok açılı füzyon: aynı alanı gören kameralara aynı bölge adı verilir;
+    # bölgedeki en yüksek sahne skoru tüm açılara yansıtılır (form: çok açılı).
+    zone: Mapped[str] = mapped_column(String(100), default="")
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

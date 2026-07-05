@@ -6,6 +6,7 @@ venv/
 backend/storage/*.db
 backend/storage/uploads/*
 backend/storage/snapshots/*
+backend/storage/.snapshot_key
 backend/server*.log
 backend/server*.err
 backend/.env

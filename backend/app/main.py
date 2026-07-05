@@ -15,10 +15,9 @@ for _stream in (sys.stdout, sys.stderr):
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, Response
 
 from .config import settings
 from .database import init_db
@@ -57,12 +56,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Tespit snapshot'larını statik olarak sun
-app.mount(
-    "/snapshots",
-    StaticFiles(directory=str(settings.snapshot_dir)),
-    name="snapshots",
-)
+# Tespit snapshot'larını sun. Görüntüler diskte ŞİFRELİ (.enc) durur
+# (form 2.6.1); burada bellekte çözülüp sunulur. Eski düz JPEG'ler de
+# geriye dönük uyumluluk için desteklenir.
+@app.get("/snapshots/{fname}", tags=["system"], include_in_schema=False)
+def serve_snapshot(fname: str):
+    if "/" in fname or "\\" in fname or ".." in fname:
+        raise HTTPException(400, "Geçersiz dosya adı")
+    plain = settings.snapshot_dir / fname
+    if plain.exists():
+        return FileResponse(plain, media_type="image/jpeg")
+    enc = settings.snapshot_dir / (fname + ".enc")
+    if enc.exists():
+        from .security import decrypt_bytes
+
+        data = decrypt_bytes(enc.read_bytes())
+        if data is None:
+            raise HTTPException(500, "Snapshot çözülemedi (anahtar uyumsuz)")
+        return Response(content=data, media_type="image/jpeg")
+    raise HTTPException(404, "Snapshot bulunamadı")
 
 app.include_router(cameras.router)
 app.include_router(events.router)

@@ -9,6 +9,8 @@ class CameraBase(BaseModel):
     name: str
     location: str = ""
     source: str = "demo"
+    # Aynı alanı gören kameralara aynı bölge adı verilir (çok açılı füzyon)
+    zone: str = ""
     is_active: bool = True
 
 
@@ -20,6 +22,7 @@ class CameraUpdate(BaseModel):
     name: str | None = None
     location: str | None = None
     source: str | None = None
+    zone: str | None = None
     is_active: bool | None = None
 
 

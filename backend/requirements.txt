@@ -12,6 +12,9 @@ opencv-python==4.10.0.84
 numpy==1.26.4
 Pillow==10.4.0
 
+# ── Veri Güvenliği (snapshot şifreleme, form 2.6.1) ─────────────────
+cryptography>=42.0
+
 # ── Derin Öğrenme ───────────────────────────────────────────────────
 # Eğitilmiş şiddet modeli (ResNet50+BiLSTM+Attention) ve Keypoint R-CNN
 # için gereklidir. Varsayılan pip paketi CPU'da çalışır (yavaş ama tam

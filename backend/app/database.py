@@ -1,7 +1,7 @@
 """SQLAlchemy veritabanı kurulumu (SQLite)."""
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import settings
@@ -32,7 +32,19 @@ def init_db() -> None:
     from . import models  # noqa: F401  (modellerin metadata'ya kaydı için)
 
     Base.metadata.create_all(bind=engine)
+    _migrate(engine)
     _seed(SessionLocal())
+
+
+def _migrate(eng) -> None:
+    """Hafif şema migrasyonu: eski veritabanlarına yeni kolonları ekle."""
+    with eng.connect() as conn:
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(cameras)"))]
+        if "zone" not in cols:
+            conn.execute(
+                text("ALTER TABLE cameras ADD COLUMN zone VARCHAR(100) DEFAULT ''")
+            )
+            conn.commit()
 
 
 def _seed(db: Session) -> None:

@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # dışına çıkmaz, mevcut davranış bozulmaz.
     low_light_enhance: bool = True
     low_light_threshold: int = 60  # 0-255 ortalama gri; ~60 altı "karanlık"
+    # Snapshot görüntülerini diskte AES-128 (Fernet) ile şifreli sakla
+    # (form 2.6.1). Anahtar: storage/.snapshot_key (ilk açılışta üretilir).
+    encrypt_snapshots: bool = True
 
     def ensure_dirs(self) -> None:
         for d in (self.storage_dir, self.upload_dir, self.snapshot_dir, self.model_dir):

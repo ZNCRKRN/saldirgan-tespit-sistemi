@@ -46,6 +46,9 @@ class DetectionPipeline:
         # Kişi tespiti seyreltme: akış başına son tespitler + kare sayacı
         self._last_persons: dict[str, list[PersonDetection]] = {}
         self._det_counters: dict[str, int] = {}
+        # Çok açılı füzyon: bölge -> {akış: (skor, zaman)}. Aynı bölgeyi
+        # gören kameraların EN YÜKSEK güncel skoru bölge kararını belirler.
+        self._zone_scores: dict[str, dict[str, tuple[float, float]]] = {}
 
     # ── Durum / tanılama ───────────────────────────────────────────
     def status(self) -> dict:
@@ -111,12 +114,17 @@ class DetectionPipeline:
         return "normal"
 
     def score_scene(self, frame: np.ndarray, stream_id: str = "default",
-                    stride: int | None = None) -> float | None:
+                    stride: int | None = None,
+                    zone: str | None = None) -> float | None:
         """Kareyi tampona ekler; periyodik olarak şiddet modelini çalıştırıp
         sahne skorunu (0-1) döndürür. Model yoksa None döner.
 
         CPU maliyeti yüksek olduğundan her `stride` karede bir gerçek çıkarım
         yapılır; aradaki karelerde son skor tekrar kullanılır.
+
+        `zone` verilirse ÇOK AÇILI FÜZYON uygulanır: aynı bölgeyi gören
+        kameraların en yüksek güncel skoru döndürülür — bir açıdan görünmeyen
+        saldırı diğer açıdan yakalanınca tüm açılar alarma geçer.
         """
         if self.clip is None:
             return None
@@ -158,7 +166,21 @@ class DetectionPipeline:
                 decision = min(raw, settings.threat_threshold * 0.99)
             self._last_scene[stream_id] = decision
         # Pencere henüz dolmadıysa None (ısınma); sonra son skoru ver.
-        return self._last_scene.get(stream_id) if have_window else None
+        own = self._last_scene.get(stream_id) if have_window else None
+        if zone and own is not None:
+            return self._fuse_zone(zone, stream_id, own)
+        return own
+
+    def _fuse_zone(self, zone: str, stream_id: str, score: float) -> float:
+        """Bölge füzyonu: bu akışın skorunu kaydet, bölgedeki tüm
+        kameraların GÜNCEL (son 6 sn) skorlarının maksimumunu döndür."""
+        import time as _time
+
+        now = _time.time()
+        streams = self._zone_scores.setdefault(zone, {})
+        streams[stream_id] = (score, now)
+        fresh = [s for s, t in streams.values() if now - t <= 6.0]
+        return max(fresh) if fresh else score
 
     @staticmethod
     def enhance_frame(frame: np.ndarray) -> np.ndarray:
@@ -215,6 +237,8 @@ class DetectionPipeline:
         self._raw_scores.pop(stream_id, None)
         self._last_persons.pop(stream_id, None)
         self._det_counters.pop(stream_id, None)
+        for streams in self._zone_scores.values():
+            streams.pop(stream_id, None)
 
     def _detect_persons(self, frame: np.ndarray,
                         stream_id: str | None) -> list[PersonDetection]:

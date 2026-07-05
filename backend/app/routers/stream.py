@@ -30,6 +30,21 @@ def _encode_jpeg(frame) -> str:
     return base64.b64encode(buf).decode("ascii") if ok else ""
 
 
+def _save_snapshot(fpath: Path, frame) -> None:
+    """Snapshot'ı diske yaz — ayar açıksa AES (Fernet) ile ŞİFRELİ
+    (`.enc` uzantısıyla; form 2.6.1 veri güvenliği). Şifreleme
+    kullanılamazsa düz JPEG'e geri düşer."""
+    if settings.encrypt_snapshots:
+        from ..security import encrypt_bytes
+
+        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        enc = encrypt_bytes(buf.tobytes()) if ok else None
+        if enc is not None:
+            fpath.with_suffix(fpath.suffix + ".enc").write_bytes(enc)
+            return
+    cv2.imwrite(str(fpath), frame)
+
+
 def _open_capture(source: str):
     """Kamera kaynağını aç. '0' -> webcam, dosya yolu veya RTSP/HTTP URL.
 
@@ -65,6 +80,7 @@ async def stream(websocket: WebSocket, camera_id: int):
 
         cam = db.get(Camera, camera_id)
         source = cam.source if cam else "demo"
+        zone = (getattr(cam, "zone", "") or "").strip() or None
 
         demo = DemoScene() if source == "demo" else None
         # Açılış (webcam'de yeniden denemeli) olay döngüsünü kilitlemesin
@@ -100,7 +116,7 @@ async def stream(websocket: WebSocket, camera_id: int):
                 # Gerçek şiddet modelini ayrı bir iş parçacığında çalıştır
                 # (CPU çıkarımı olay döngüsünü kilitlemesin).
                 scene = await asyncio.to_thread(
-                    pipeline.score_scene, frame, str(camera_id)
+                    pipeline.score_scene, frame, str(camera_id), None, zone
                 )
                 if pipeline.clip is not None and scene is None:
                     # Isınma (tampon doluyor): sezgisel yedeğe DÜŞME — o,
@@ -129,7 +145,7 @@ async def stream(websocket: WebSocket, camera_id: int):
                 ):
                     fname = f"{uuid.uuid4().hex}.jpg"
                     fpath = settings.snapshot_dir / fname
-                    cv2.imwrite(str(fpath), annotated)
+                    _save_snapshot(fpath, annotated)
                     snap_path = f"/snapshots/{fname}"
                     snapshot_cooldown = tick + 1.0
 

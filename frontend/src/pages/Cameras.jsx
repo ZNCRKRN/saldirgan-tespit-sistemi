@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import { Badge, Spinner } from "../components/ui";
 import CameraConnectGuide from "../components/CameraConnectGuide";
 
-const EMPTY = { name: "", location: "", source: "demo", is_active: true };
+const EMPTY = { name: "", location: "", source: "demo", zone: "", is_active: true };
 
 export default function Cameras() {
   const [cameras, setCameras] = useState([]);
@@ -64,7 +64,7 @@ export default function Cameras() {
 
       <CameraConnectGuide onApply={applySource} />
 
-      <form onSubmit={submit} className="card p-5 grid sm:grid-cols-4 gap-3 items-end">
+      <form onSubmit={submit} className="card p-5 grid sm:grid-cols-5 gap-3 items-end">
         <Field label="Ad">
           <input
             required
@@ -91,6 +91,15 @@ export default function Cameras() {
             placeholder="demo / 0 / rtsp://…"
           />
         </Field>
+        <Field label="Bölge (çok açılı füzyon)">
+          <input
+            value={form.zone}
+            onChange={(e) => setForm({ ...form, zone: e.target.value })}
+            className="input"
+            placeholder="ör: giris-holu (opsiyonel)"
+            title="Aynı alanı gören kameralara aynı bölge adını verin: bölgedeki en yüksek tehdit skoru tüm açılara yansıtılır"
+          />
+        </Field>
         <button disabled={saving} className="btn-primary">
           {saving ? "Ekleniyor…" : "+ Kamera Ekle"}
         </button>
@@ -105,7 +114,10 @@ export default function Cameras() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold">{c.name}</h3>
-                  <p className="text-xs text-slate-500">{c.location || "—"}</p>
+                  <p className="text-xs text-slate-500">
+                    {c.location || "—"}
+                    {c.zone ? ` · bölge: ${c.zone}` : ""}
+                  </p>
                 </div>
                 <Badge
                   className={c.is_active ? "bg-safe/20 text-safe" : "bg-slate-600/30 text-slate-400"}
