@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     # (kameraya el sallama, tek başına hızlı hareket) 'saldırgan' etiketi
     # 'şüpheli'ye düşürülür; alarm üretilmez ama olay yine izlenebilir.
     min_persons_for_alarm: int = 2
+    # Düşük ışık iyileştirme (form 2.3: aydınlatma düzeltme + gürültü azaltma).
+    # Kare karanlıksa (ortalama parlaklık < eşik) CLAHE + hafif yumuşatma
+    # uygulanır. Normal ışıkta kare DEĞİŞTİRİLMEZ — model eğitim dağılımının
+    # dışına çıkmaz, mevcut davranış bozulmaz.
+    low_light_enhance: bool = True
+    low_light_threshold: int = 60  # 0-255 ortalama gri; ~60 altı "karanlık"
 
     def ensure_dirs(self) -> None:
         for d in (self.storage_dir, self.upload_dir, self.snapshot_dir, self.model_dir):

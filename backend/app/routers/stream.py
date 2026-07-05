@@ -95,6 +95,8 @@ async def stream(websocket: WebSocket, camera_id: int):
                     pipeline.reset_stream(str(camera_id))
                     await asyncio.sleep(0.05)
                     continue
+                # Düşük ışıkta aydınlatma düzeltmesi (normal ışıkta no-op)
+                frame = pipeline.enhance_frame(frame)
                 # Gerçek şiddet modelini ayrı bir iş parçacığında çalıştır
                 # (CPU çıkarımı olay döngüsünü kilitlemesin).
                 scene = await asyncio.to_thread(
@@ -208,7 +210,8 @@ async def analyze_video(
             if not ok:
                 break
             if idx % step == 0:
-                frames.append(frame)
+                # Düşük ışıkta aydınlatma düzeltmesi (normal ışıkta no-op)
+                frames.append(pipeline.enhance_frame(frame))
             idx += 1
         cap.release()
 

@@ -7,6 +7,7 @@ Akış (form bölüm 2.1 "Projenin Genel Mimarisi"):
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -158,6 +159,29 @@ class DetectionPipeline:
             self._last_scene[stream_id] = decision
         # Pencere henüz dolmadıysa None (ısınma); sonra son skoru ver.
         return self._last_scene.get(stream_id) if have_window else None
+
+    @staticmethod
+    def enhance_frame(frame: np.ndarray) -> np.ndarray:
+        """Düşük ışık iyileştirme (form 2.3): kare karanlıksa CLAHE ile
+        aydınlatma düzeltmesi + hafif Gauss yumuşatmasıyla gürültü azaltma.
+
+        Normal aydınlıkta kare OLDUĞU GİBİ döner (modelin eğitim dağılımı
+        korunur); yalnızca ortalama parlaklık eşiğin altındaysa müdahale edilir.
+        """
+        if not getattr(settings, "low_light_enhance", True):
+            return frame
+        gray_mean = float(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).mean())
+        if gray_mean >= getattr(settings, "low_light_threshold", 60):
+            return frame
+        # LAB uzayında yalnızca parlaklık (L) kanalına CLAHE uygula:
+        # renkler bozulmadan kontrast/aydınlık dengelenir.
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l_ch, a_ch, b_ch = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+        l_ch = clahe.apply(l_ch)
+        out = cv2.cvtColor(cv2.merge((l_ch, a_ch, b_ch)), cv2.COLOR_LAB2BGR)
+        # Karanlıkta yükselen sensör gürültüsünü hafif yumuşat
+        return cv2.GaussianBlur(out, (3, 3), 0)
 
     @staticmethod
     def _motion_energy(frames: list[np.ndarray]) -> float:
@@ -351,6 +375,14 @@ class DetectionPipeline:
             cv2.rectangle(out, (b.x, b.y - 18), (b.x + 8 + 7 * len(tag), b.y), color, -1)
             cv2.putText(out, tag, (b.x + 4, b.y - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # ── Zaman damgası (form 2.2.3) — sağ alt köşe, kayıt/analiz kanıtı ──
+        ts = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        h, w = out.shape[:2]
+        (tw, th), _ = cv2.getTextSize(ts, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
+        cv2.rectangle(out, (w - tw - 14, h - th - 14), (w - 4, h - 4), (25, 25, 25), -1)
+        cv2.putText(out, ts, (w - tw - 9, h - 9),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
         return out
 
     # ── Yardımcılar ────────────────────────────────────────────────

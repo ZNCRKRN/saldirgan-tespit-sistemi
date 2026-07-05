@@ -12,7 +12,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { api } from "../api/client";
+import { api, backendBase } from "../api/client";
 import { Spinner, StatCard } from "../components/ui";
 
 const SEV_COLORS = {
@@ -42,16 +42,26 @@ export default function Reports({ model }) {
             Sistem performansı ve tehdit istatistikleri
           </p>
         </div>
-        <select
-          value={hours}
-          onChange={(e) => setHours(Number(e.target.value))}
-          className="bg-ink-700 border border-white/10 rounded-lg px-4 py-2 text-sm"
-        >
-          <option value={6}>Son 6 saat</option>
-          <option value={24}>Son 24 saat</option>
-          <option value={72}>Son 3 gün</option>
-          <option value={168}>Son 7 gün</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={hours}
+            onChange={(e) => setHours(Number(e.target.value))}
+            className="bg-ink-700 border border-white/10 rounded-lg px-4 py-2 text-sm"
+          >
+            <option value={6}>Son 6 saat</option>
+            <option value={24}>Son 24 saat</option>
+            <option value={72}>Son 3 gün</option>
+            <option value={168}>Son 7 gün</option>
+          </select>
+          <a
+            href={`${backendBase()}/api/reports/export?hours=${hours}`}
+            download
+            className="bg-accent/15 text-accent border border-accent/30 rounded-lg px-4 py-2 text-sm hover:bg-accent/25 transition-colors"
+            title="Yazdırılabilir HTML raporu indir (tarayıcıdan PDF'e çevrilebilir)"
+          >
+            ⬇ Raporu İndir
+          </a>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
