@@ -121,6 +121,67 @@ export default function Reports({ model }) {
         </div>
       </div>
 
+      {model?.test_accuracy != null && (
+        <div className="card p-5">
+          <h2 className="font-semibold mb-1">
+            Model Performansı — Bağımsız Test Kümesi
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Eğitimde hiç görülmemiş 300 video (150 şiddet / 150 normal)
+            üzerinde ölçülmüştür.
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <StatCard
+              label="Test Doğruluğu"
+              value={`${(model.test_accuracy * 100).toFixed(1)}%`}
+              accent="text-safe"
+            />
+            {model.test_f1 != null && (
+              <StatCard label="F1 Skoru" value={model.test_f1.toFixed(3)} />
+            )}
+            {model.test_auc != null && (
+              <StatCard label="AUC" value={model.test_auc.toFixed(3)} />
+            )}
+            {model.val_accuracy != null && (
+              <StatCard
+                label="Doğrulama Doğruluğu"
+                value={`${(model.val_accuracy * 100).toFixed(1)}%`}
+              />
+            )}
+          </div>
+          {model.class_report && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] text-slate-500 border-b border-white/5">
+                  <th className="py-2">Sınıf</th>
+                  <th>Kesinlik (Precision)</th>
+                  <th>Duyarlılık (Recall)</th>
+                  <th>F1</th>
+                  <th>Örnek</th>
+                </tr>
+              </thead>
+              <tbody>
+                {["NonViolence", "Violence"].map((cls) => {
+                  const r = model.class_report[cls];
+                  if (!r) return null;
+                  return (
+                    <tr key={cls} className="border-b border-white/5">
+                      <td className="py-2">
+                        {cls === "Violence" ? "Şiddet" : "Normal"}
+                      </td>
+                      <td>{(r.precision * 100).toFixed(1)}%</td>
+                      <td>{(r.recall * 100).toFixed(1)}%</td>
+                      <td>{(r["f1-score"] * 100).toFixed(1)}%</td>
+                      <td>{r.support}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {model && (
         <div className="card p-5">
           <h2 className="font-semibold mb-3">Model & Pipeline Bilgisi</h2>

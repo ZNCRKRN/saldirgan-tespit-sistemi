@@ -89,6 +89,88 @@ def _build_arch(torch, hidden_size: int, num_layers: int, dropout: float):
     return ViolenceDetectionModel(hidden_size, num_layers, dropout)
 
 
+def _build_arch_v2(torch, hidden_size: int, num_layers: int, dropout: float):
+    """Yeni (anti-overfitting) eğitimdeki mimari — feature_reducer +
+    SpatialDropout + LayerNorm + dar attention. `kaggle_training_notebook (1).py`
+    ile birebir aynı yapı."""
+    import torch.nn as nn
+    from torchvision import models
+
+    class SpatialDropout1D(nn.Module):
+        def __init__(self, p=0.2):
+            super().__init__()
+            self.p = p
+
+        def forward(self, x):
+            if not self.training or self.p == 0:
+                return x
+            mask = torch.bernoulli(
+                torch.ones(x.shape[0], 1, x.shape[2], device=x.device) * (1 - self.p)
+            )
+            return x * mask / (1 - self.p)
+
+    class AttentionLayer(nn.Module):
+        def __init__(self, hidden):
+            super().__init__()
+            self.attention = nn.Sequential(
+                nn.Linear(hidden, hidden // 4),
+                nn.Tanh(),
+                nn.Dropout(0.3),
+                nn.Linear(hidden // 4, 1),
+            )
+
+        def forward(self, lstm_output):
+            scores = self.attention(lstm_output)
+            weights = torch.softmax(scores, dim=1)
+            context = torch.sum(weights * lstm_output, dim=1)
+            return context, weights
+
+    class ViolenceDetectionModelV2(nn.Module):
+        def __init__(self, hidden=128, layers=1, drop=0.5):
+            super().__init__()
+            resnet = models.resnet50(weights=None)  # ağırlıklar state_dict'ten
+            self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1])
+            self.feature_size = 2048
+            self.feature_reducer = nn.Sequential(
+                nn.Linear(self.feature_size, hidden * 2),
+                nn.ReLU(),
+                nn.BatchNorm1d(hidden * 2),
+            )
+            self.spatial_dropout = SpatialDropout1D(p=0.3)
+            self.lstm = nn.LSTM(
+                input_size=hidden * 2,
+                hidden_size=hidden,
+                num_layers=layers,
+                batch_first=True,
+                dropout=0,
+                bidirectional=True,
+            )
+            self.layer_norm = nn.LayerNorm(hidden * 2)
+            self.attention = AttentionLayer(hidden * 2)
+            self.classifier = nn.Sequential(
+                nn.Dropout(drop),
+                nn.Linear(hidden * 2, 64),
+                nn.ReLU(),
+                nn.BatchNorm1d(64),
+                nn.Dropout(drop * 0.6),
+                nn.Linear(64, 1),
+                nn.Sigmoid(),
+            )
+
+        def forward(self, x):
+            b, f, C, H, W = x.shape
+            x = x.view(b * f, C, H, W)
+            feat = self.feature_extractor(x).view(b * f, self.feature_size)
+            feat = self.feature_reducer(feat).view(b, f, -1)
+            feat = self.spatial_dropout(feat)
+            out, _ = self.lstm(feat)
+            out = self.layer_norm(out)
+            ctx, w = self.attention(out)
+            return self.classifier(ctx).squeeze(1), w
+
+    return ViolenceDetectionModelV2(hidden_size, num_layers, dropout)
+
+
 class ViolenceClipClassifier:
     """Eğitilmiş ResNet50+BiLSTM+Attention şiddet modelini saran çıkarım sınıfı."""
 
@@ -108,23 +190,39 @@ class ViolenceClipClassifier:
             cfg = ckpt.get("model_config", {}) or {}
             self.val_acc = ckpt.get("val_acc")
             self.test_acc = ckpt.get("test_accuracy")
+            # Yeni eğitimin ek metrikleri (varsa) — UI'de gösterilir
+            self.test_f1 = ckpt.get("test_f1")
+            self.test_auc = ckpt.get("test_auc")
+            self.classification_report = ckpt.get("classification_report")
         elif isinstance(ckpt, dict) and all(isinstance(v, torch.Tensor) for v in ckpt.values()):
             state = ckpt  # düz state_dict
             cfg, self.val_acc, self.test_acc = {}, None, None
+            self.test_f1 = self.test_auc = self.classification_report = None
         else:  # tam pickle'lanmış model
             state, cfg, self.val_acc, self.test_acc = None, {}, None, None
+            self.test_f1 = self.test_auc = self.classification_report = None
             self.model = ckpt
 
         self.num_frames = int(cfg.get("num_frames", NUM_FRAMES))
         self.img_size = int(cfg.get("img_size", IMG_SIZE))
 
         if state is not None:
-            model = _build_arch(
-                torch,
-                int(cfg.get("hidden_size", 256)),
-                int(cfg.get("num_layers", 2)),
-                float(cfg.get("dropout", 0.3)),
-            )
+            # Mimari sürümünü state_dict anahtarlarından tanı:
+            # v2 (yeni anti-overfitting eğitim) feature_reducer içerir.
+            if any(k.startswith("feature_reducer.") for k in state):
+                model = _build_arch_v2(
+                    torch,
+                    int(cfg.get("hidden_size", 128)),
+                    int(cfg.get("num_layers", 1)),
+                    float(cfg.get("dropout", 0.5)),
+                )
+            else:
+                model = _build_arch(
+                    torch,
+                    int(cfg.get("hidden_size", 256)),
+                    int(cfg.get("num_layers", 2)),
+                    float(cfg.get("dropout", 0.3)),
+                )
             model.load_state_dict(state, strict=True)
             self.model = model
 

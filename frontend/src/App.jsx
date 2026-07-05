@@ -69,8 +69,11 @@ function Sidebar({ model }) {
             {model.using_real_model && (
               <p className="text-slate-500 mt-0.5">
                 {model.device === "cuda" ? "⚡ GPU (CUDA)" : "CPU"}
-                {model.val_accuracy != null &&
-                  ` · doğruluk %${(model.val_accuracy * 100).toFixed(1)}`}
+                {model.test_accuracy != null
+                  ? ` · test %${(model.test_accuracy * 100).toFixed(1)}`
+                  : model.val_accuracy != null
+                    ? ` · doğruluk %${(model.val_accuracy * 100).toFixed(1)}`
+                    : ""}
               </p>
             )}
           </>

@@ -54,12 +54,17 @@ class DetectionPipeline:
             window = self.clip.num_frames
             device = self.clip.device.type
             val_acc = self.clip.val_acc
+            test_acc = getattr(self.clip, "test_acc", None)
+            test_f1 = getattr(self.clip, "test_f1", None)
+            test_auc = getattr(self.clip, "test_auc", None)
+            class_report = getattr(self.clip, "classification_report", None)
         else:
             behavior_name = self.classifier.name
             using_real = self.classifier.is_real_model
             window = settings.sequence_length
             device = "cpu"
             val_acc = None
+            test_acc = test_f1 = test_auc = class_report = None
         real_pose = getattr(self.person_detector, "provides_keypoints", False)
         return {
             "pipeline": "Keypoint R-CNN → "
@@ -78,6 +83,11 @@ class DetectionPipeline:
             "device": device,
             "frame_window": window,
             "val_accuracy": round(val_acc, 4) if val_acc is not None else None,
+            # Bağımsız TEST kümesi metrikleri (yeni checkpoint'te kayıtlı)
+            "test_accuracy": round(test_acc, 4) if test_acc is not None else None,
+            "test_f1": round(test_f1, 4) if test_f1 is not None else None,
+            "test_auc": round(test_auc, 4) if test_auc is not None else None,
+            "class_report": class_report,
             "threat_threshold": settings.threat_threshold,
             "sequence_length": settings.sequence_length,
         }

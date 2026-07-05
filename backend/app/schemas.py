@@ -99,5 +99,10 @@ class ModelStatus(BaseModel):
     device: str = "cpu"
     frame_window: int | None = None
     val_accuracy: float | None = None
+    # Bağımsız test kümesi metrikleri (checkpoint'te kayıtlıysa)
+    test_accuracy: float | None = None
+    test_f1: float | None = None
+    test_auc: float | None = None
+    class_report: dict | None = None
     threat_threshold: float
     sequence_length: int
