@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime
+import time as _time_mod
 
 import cv2
 import numpy as np
@@ -53,6 +54,10 @@ class DetectionPipeline:
         # Çok açılı füzyon: bölge -> {akış: (skor, zaman)}. Aynı bölgeyi
         # gören kameraların EN YÜKSEK güncel skoru bölge kararını belirler.
         self._zone_scores: dict[str, dict[str, tuple[float, float]]] = {}
+        # Performans metrikleri (A3: Dashboard'da gösterilir)
+        self._infer_count: int = 0
+        self._infer_total_ms: float = 0.0
+        self._last_infer_ms: float = 0.0
 
     # ── Durum / tanılama ───────────────────────────────────────────
     def status(self) -> dict:
@@ -98,6 +103,11 @@ class DetectionPipeline:
             "class_report": class_report,
             "threat_threshold": settings.threat_threshold,
             "sequence_length": settings.sequence_length,
+            # Performans metrikleri (A3)
+            "active_streams": len(self._buffers),
+            "total_inferences": self._infer_count,
+            "avg_infer_ms": round(self._infer_total_ms / max(self._infer_count, 1), 1),
+            "last_infer_ms": round(self._last_infer_ms, 1),
         }
 
     # ── Sahne (klip) skorlama — gerçek model ───────────────────────
@@ -148,7 +158,12 @@ class DetectionPipeline:
         if have_window and fresh_due:
             k = max(2, getattr(settings, "clip_consecutive", 3))
             window = list(buf)[::fs]
+            t0 = _time_mod.perf_counter()
             raw = self.clip.infer(window)
+            elapsed_ms = (_time_mod.perf_counter() - t0) * 1000
+            self._infer_count += 1
+            self._infer_total_ms += elapsed_ms
+            self._last_infer_ms = elapsed_ms
             # Hareket kapısı: pencere içi bölgesel hareket düşükse (el ele
             # tutuşma, sohbet, selamlaşma) modelin skoru bastırılır. Gerçek
             # kavga sürekli yüksek hareket ürettiğinden etkilenmez.

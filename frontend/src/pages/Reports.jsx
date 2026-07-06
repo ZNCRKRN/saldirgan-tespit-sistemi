@@ -160,34 +160,37 @@ export default function Reports({ model }) {
             )}
           </div>
           {model.class_report && (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] text-slate-500 border-b border-white/5">
-                  <th className="py-2">Sınıf</th>
-                  <th>Kesinlik (Precision)</th>
-                  <th>Duyarlılık (Recall)</th>
-                  <th>F1</th>
-                  <th>Örnek</th>
-                </tr>
-              </thead>
-              <tbody>
-                {["NonViolence", "Violence"].map((cls) => {
-                  const r = model.class_report[cls];
-                  if (!r) return null;
-                  return (
-                    <tr key={cls} className="border-b border-white/5">
-                      <td className="py-2">
-                        {cls === "Violence" ? "Şiddet" : "Normal"}
-                      </td>
-                      <td>{(r.precision * 100).toFixed(1)}%</td>
-                      <td>{(r.recall * 100).toFixed(1)}%</td>
-                      <td>{(r["f1-score"] * 100).toFixed(1)}%</td>
-                      <td>{r.support}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="grid lg:grid-cols-2 gap-6">
+              <table className="w-full text-sm h-fit">
+                <thead>
+                  <tr className="text-left text-[11px] text-slate-500 border-b border-white/5">
+                    <th className="py-2">Sınıf</th>
+                    <th>Kesinlik (Precision)</th>
+                    <th>Duyarlılık (Recall)</th>
+                    <th>F1</th>
+                    <th>Örnek</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {["NonViolence", "Violence"].map((cls) => {
+                    const r = model.class_report[cls];
+                    if (!r) return null;
+                    return (
+                      <tr key={cls} className="border-b border-white/5">
+                        <td className="py-2">
+                          {cls === "Violence" ? "Şiddet" : "Normal"}
+                        </td>
+                        <td>{(r.precision * 100).toFixed(1)}%</td>
+                        <td>{(r.recall * 100).toFixed(1)}%</td>
+                        <td>{(r["f1-score"] * 100).toFixed(1)}%</td>
+                        <td>{r.support}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <ConfusionMatrix report={model.class_report} />
+            </div>
           )}
         </div>
       )}
@@ -231,6 +234,65 @@ function Info({ k, v }) {
     <div className="bg-ink-700 rounded-lg px-3 py-2">
       <p className="text-[11px] text-slate-500">{k}</p>
       <p className="text-slate-200">{v}</p>
+    </div>
+  );
+}
+
+function ConfusionMatrix({ report }) {
+  const nv = report?.NonViolence;
+  const vi = report?.Violence;
+  if (!nv || !vi) return null;
+
+  // TP/TN/FP/FN hesaplama (recall = TP/(TP+FN), precision = TP/(TP+FP), support = TP+FN)
+  const TP = Math.round(vi.recall * vi.support);       // Doğru Şiddet
+  const FN = vi.support - TP;                            // Kaçırılan Şiddet
+  const TN = Math.round(nv.recall * nv.support);        // Doğru Normal
+  const FP = nv.support - TN;                            // Yanlış Alarm
+  const total = TP + TN + FP + FN;
+
+  const cells = [
+    { val: TN, label: "TN", desc: "Doğru Normal", bg: "bg-safe/25", text: "text-safe" },
+    { val: FP, label: "FP", desc: "Yanlış Alarm", bg: "bg-warn/25", text: "text-warn" },
+    { val: FN, label: "FN", desc: "Kaçırılan", bg: "bg-orange-500/25", text: "text-orange-400" },
+    { val: TP, label: "TP", desc: "Doğru Şiddet", bg: "bg-accent/25", text: "text-accent" },
+  ];
+
+  return (
+    <div>
+      <p className="text-[11px] text-slate-500 mb-2 font-semibold uppercase tracking-wider">
+        Karışıklık Matrisi (Confusion Matrix)
+      </p>
+      <div className="grid grid-cols-[auto_1fr_1fr] gap-0.5 text-center text-sm max-w-xs">
+        {/* Üst başlıklar */}
+        <div />
+        <div className="text-[10px] text-slate-500 py-1">Tahmin: Normal</div>
+        <div className="text-[10px] text-slate-500 py-1">Tahmin: Şiddet</div>
+        {/* Satır 1: Gerçek Normal */}
+        <div className="text-[10px] text-slate-500 flex items-center justify-end pr-2 writing-mode-vertical"
+             style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+          Gerçek: Normal
+        </div>
+        {[cells[0], cells[1]].map((c) => (
+          <div key={c.label} className={`${c.bg} rounded-lg py-4 px-2`}>
+            <p className={`text-2xl font-bold ${c.text}`}>{c.val}</p>
+            <p className="text-[10px] text-slate-400">{c.label} — {c.desc}</p>
+          </div>
+        ))}
+        {/* Satır 2: Gerçek Şiddet */}
+        <div className="text-[10px] text-slate-500 flex items-center justify-end pr-2"
+             style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+          Gerçek: Şiddet
+        </div>
+        {[cells[2], cells[3]].map((c) => (
+          <div key={c.label} className={`${c.bg} rounded-lg py-4 px-2`}>
+            <p className={`text-2xl font-bold ${c.text}`}>{c.val}</p>
+            <p className="text-[10px] text-slate-400">{c.label} — {c.desc}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-slate-600 mt-2">
+        Toplam: {total} video · Doğruluk: {((TP + TN) / total * 100).toFixed(1)}%
+      </p>
     </div>
   );
 }

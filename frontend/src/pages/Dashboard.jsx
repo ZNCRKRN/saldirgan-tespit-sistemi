@@ -15,15 +15,18 @@ import { Badge, SEVERITY_STYLES, Spinner, StatCard, formatTime } from "../compon
 export default function Dashboard() {
   const [report, setReport] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [model, setModel] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [rep, al] = await Promise.all([
+    const [rep, al, ms] = await Promise.all([
       api.report(24),
       api.listAlerts({ limit: 6 }),
+      api.modelStatus().catch(() => null),
     ]);
     setReport(rep);
     setAlerts(al);
+    setModel(ms);
     setLoading(false);
   };
 
@@ -71,6 +74,35 @@ export default function Dashboard() {
           icon="📈"
         />
       </div>
+
+      {/* Performans Metrikleri (A3) */}
+      {model && model.using_real_model && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Aktif Akış"
+            value={model.active_streams ?? 0}
+            icon="📹"
+          />
+          <StatCard
+            label="Toplam Çıkarım"
+            value={model.total_inferences ?? 0}
+            icon="🧠"
+          />
+          <StatCard
+            label="Ort. Çıkarım"
+            value={model.avg_infer_ms ? `${model.avg_infer_ms} ms` : "—"}
+            accent="text-accent"
+            sub="ms/klip"
+            icon="⚡"
+          />
+          <StatCard
+            label="Son Çıkarım"
+            value={model.last_infer_ms ? `${model.last_infer_ms} ms` : "—"}
+            sub={model.device === "cuda" ? "GPU (CUDA)" : "CPU"}
+            icon="⏱"
+          />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="card p-5 lg:col-span-2">
@@ -148,3 +180,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

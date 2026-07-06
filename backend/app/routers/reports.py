@@ -102,6 +102,28 @@ def export_report(
   </div>
   <table><tr><th>Sınıf</th><th>Kesinlik</th><th>Duyarlılık</th><th>F1</th><th>Örnek</th></tr>{cr_rows}</table>"""
 
+        # Karışıklık matrisi (TP/TN/FP/FN) hesapla ve HTML'e ekle
+        vi = cr.get("Violence", {})
+        nv = cr.get("NonViolence", {})
+        if vi and nv:
+            tp = round(vi.get("recall", 0) * vi.get("support", 0))
+            fn = int(vi.get("support", 0)) - tp
+            tn = round(nv.get("recall", 0) * nv.get("support", 0))
+            fp = int(nv.get("support", 0)) - tn
+            total_cm = tp + tn + fp + fn
+            perf += f"""
+  <h3 style="margin-top:20px">Karışıklık Matrisi (Confusion Matrix)</h3>
+  <table class="cm" style="max-width:400px;text-align:center">
+    <tr><th></th><th>Tahmin: Normal</th><th>Tahmin: Şiddet</th></tr>
+    <tr><th style="text-align:right;padding-right:8px">Gerçek: Normal</th>
+        <td style="background:#dcfce7;color:#166534"><b>{tn}</b><br><small>TN — Doğru Normal</small></td>
+        <td style="background:#fef9c3;color:#854d0e"><b>{fp}</b><br><small>FP — Yanlış Alarm</small></td></tr>
+    <tr><th style="text-align:right;padding-right:8px">Gerçek: Şiddet</th>
+        <td style="background:#ffedd5;color:#9a3412"><b>{fn}</b><br><small>FN — Kaçırılan</small></td>
+        <td style="background:#dbeafe;color:#1e40af"><b>{tp}</b><br><small>TP — Doğru Şiddet</small></td></tr>
+  </table>
+  <p style="font-size:11px;color:#94a3b8">Toplam: {total_cm} video · Doğruluk: %{(tp + tn) / max(total_cm, 1) * 100:.1f}</p>"""
+
     html = f"""<!DOCTYPE html>
 <html lang="tr"><head><meta charset="utf-8">
 <title>Saldırgan Tespit Raporu — {now.strftime('%d.%m.%Y %H:%M')}</title>

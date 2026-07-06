@@ -1,6 +1,23 @@
 import React, { useState } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+} from "recharts";
 import { api } from "../api/client";
 import { Badge } from "../components/ui";
+
+const LABEL_COLORS = {
+  attacker: "#ef4444",
+  suspicious: "#f59e0b",
+  normal: "#22c55e",
+};
 
 export default function VideoAnalysis() {
   const [file, setFile] = useState(null);
@@ -23,7 +40,7 @@ export default function VideoAnalysis() {
   };
 
   return (
-    <div className="p-8 space-y-6 max-w-3xl">
+    <div className="p-8 space-y-6 max-w-4xl">
       <header>
         <h1 className="text-2xl font-bold">Video Analizi</h1>
         <p className="text-slate-400 text-sm">
@@ -82,6 +99,39 @@ export default function VideoAnalysis() {
               <Metric k="Maks. Tehdit" v={`${Math.round(result.max_threat_score * 100)}%`} />
               <Metric k="Oluşan Uyarı" v={result.alerts_created} />
             </div>
+
+            {/* Pencere-pencere skor grafiği */}
+            {result.windows && result.windows.length > 0 && (
+              <div className="card p-5 mt-4">
+                <h3 className="font-semibold mb-1">Pencere Bazlı Tehdit Skoru</h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  Her çubuk ~5 saniyelik bir analiz penceresini temsil eder.
+                  Kırmızı çizgi alarm eşiğini (%80) gösterir.
+                </p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={result.windows}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e2740" />
+                    <XAxis dataKey="window" stroke="#64748b" fontSize={11} label={{ value: "Pencere", position: "insideBottom", offset: -2, fontSize: 10, fill: "#64748b" }} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#0f1522",
+                        border: "1px solid #1e2740",
+                        borderRadius: 12,
+                      }}
+                      formatter={(v) => [`${(v * 100).toFixed(1)}%`, "Skor"]}
+                      labelFormatter={(l) => `Pencere ${l}`}
+                    />
+                    <ReferenceLine y={0.8} stroke="#ef4444" strokeDasharray="5 3" strokeWidth={1.5} label={{ value: "Eşik %80", position: "right", fontSize: 10, fill: "#ef4444" }} />
+                    <Bar dataKey="score" name="Tehdit Skoru" radius={[4, 4, 0, 0]}>
+                      {result.windows.map((w, i) => (
+                        <Cell key={i} fill={LABEL_COLORS[w.label] || "#64748b"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -97,3 +147,4 @@ function Metric({ k, v }) {
     </div>
   );
 }
+

@@ -212,6 +212,7 @@ async def analyze_video(
     max_threat = 0.0
     attacker_windows = 0
     alerts_created = 0
+    window_details = []  # pencere-pencere detay (B2)
 
     if pipeline.clip is not None:
         # ── Gerçek model: videoyu pencerelere bölüp her birini sınıflandır ──
@@ -255,6 +256,13 @@ async def analyze_video(
             max_threat = max(max_threat, result.max_threat)
             if result.has_attacker:
                 attacker_windows += 1
+            window_details.append({
+                "window": len(window_details) + 1,
+                "raw_score": round(score, 3),
+                "score": round(result.max_threat, 3),
+                "label": result.persons[0].label if result.persons else "normal",
+                "person_count": len(result.persons),
+            })
             alert = crud.record_frame_result(db, result, camera_id=camera_id)
             if alert is not None:
                 alerts_created += 1
@@ -291,6 +299,7 @@ async def analyze_video(
         "attacker_frames": attacker_windows,
         "max_threat_score": round(max_threat, 3),
         "alerts_created": alerts_created,
+        "windows": window_details,
         "verdict": (
             f"SALDIRGAN/ŞİDDET TESPİT EDİLDİ ({attacker_windows} {verdict_unit})"
             if attacker_windows else "Temiz"

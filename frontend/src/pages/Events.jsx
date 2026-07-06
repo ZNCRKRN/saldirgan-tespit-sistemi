@@ -13,6 +13,7 @@ export default function Events() {
   const [events, setEvents] = useState([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState(null); // modal için seçili olay
 
   const load = async () => {
     const params = { limit: 200 };
@@ -32,7 +33,7 @@ export default function Events() {
       <header>
         <h1 className="text-2xl font-bold">Olay Geçmişi</h1>
         <p className="text-slate-400 text-sm">
-          Kaydedilen tüm tespit olayları (veri kaydı & raporlama)
+          Kaydedilen tüm tespit olayları (veri kaydı &amp; raporlama)
         </p>
       </header>
 
@@ -91,13 +92,13 @@ export default function Events() {
                     <td className="px-4 py-3">{e.person_count}</td>
                     <td className="px-4 py-3">
                       {e.snapshot_path ? (
-                        <a href={assetUrl(e.snapshot_path)} target="_blank" rel="noreferrer">
+                        <button onClick={() => setPreview(e)} className="focus:outline-none">
                           <img
                             src={assetUrl(e.snapshot_path)}
                             alt=""
-                            className="h-9 w-16 object-cover rounded border border-white/10"
+                            className="h-9 w-16 object-cover rounded border border-white/10 hover:border-accent/60 transition-colors cursor-pointer"
                           />
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-slate-600">—</span>
                       )}
@@ -114,6 +115,52 @@ export default function Events() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Snapshot Önizleme Modalı */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative bg-ink-800 rounded-2xl border border-white/10 shadow-2xl max-w-4xl w-full mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Üst bilgi çubuğu */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Badge className={(LABEL_STYLES[preview.label] || LABEL_STYLES.normal).cls}>
+                  {(LABEL_STYLES[preview.label] || LABEL_STYLES.normal).text}
+                </Badge>
+                <span className="text-sm text-slate-400">{formatTime(preview.timestamp)}</span>
+                <span className="text-sm text-slate-500">
+                  Tehdit: %{Math.round(preview.threat_score * 100)} · {preview.person_count} kişi
+                </span>
+              </div>
+              <button
+                onClick={() => setPreview(null)}
+                className="text-slate-400 hover:text-white text-xl transition-colors px-2"
+              >
+                ✕
+              </button>
+            </div>
+            {/* Snapshot görüntüsü */}
+            <div className="flex items-center justify-center bg-black/40 p-2">
+              <img
+                src={assetUrl(preview.snapshot_path)}
+                alt="Olay snapshot'ı"
+                className="max-h-[75vh] w-auto rounded"
+              />
+            </div>
+            {/* Alt bilgi */}
+            {preview.action && (
+              <div className="px-5 py-2 border-t border-white/5 text-xs text-slate-500">
+                Eylem: {preview.action}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
