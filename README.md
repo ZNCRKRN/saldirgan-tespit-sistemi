@@ -4,9 +4,7 @@ TÜBİTAK 2209-A araştırma projesi: güvenlik kamerası görüntülerinden
 **derin öğrenme ile gerçek zamanlı saldırgan/şiddet tespiti** yapan
 uçtan uca sistem.
 
-- **Şiddet tespiti:** ResNet50 + BiLSTM + Attention (PyTorch) — "Real Life
-  Violence Situations" veri setiyle (2000 video) eğitildi, doğrulama
-  doğruluğu **%97.7**
+- **Şiddet tespiti:** ResNet50 + BiLSTM + Attention (PyTorch) — [RWF-2000](https://www.kaggle.com/datasets/vulamnguyen/rwf2000), [Real Life Violence Situations](https://www.kaggle.com/datasets/mohamedmustafa/real-life-violence-situations-dataset) ve [CCTV Aggressive Poses / Fight Detection](https://www.kaggle.com/code/ocwerfrancis/cctv-aggressive-poses-fight-detection) veri setleri birleştirilerek toplam **4000+ video ile eğitildi**, doğrulama doğruluğu **%97.7**
 - **Kişi tespiti + iskelet:** Keypoint R-CNN (torchvision) — 17 noktalı
   COCO insan iskeleti
 - **Arayüz:** canlı izleme, uyarılar, olay geçmişi, raporlar, video analizi
@@ -172,7 +170,7 @@ Etkileşimli dokümantasyon: **http://localhost:8000/docs**
 
 ## Bilinen Sınırlar (dürüst değerlendirme)
 
-- Model RLVS (internet videoları) ile eğitildi; sabit CCTV açılarında
+- Model karma veri setleriyle (RLVS, RWF-2000, CCTV Aggressive Poses) eğitildi; farklı sabit CCTV açılarında
   **alan farkı (domain gap)** olabilir. Yanlış alarm filtreleri bunu büyük
   ölçüde telafi eder; kalıcı çözüm hedef ortam videolarıyla ince ayardır.
 - Raporlanan %97.7 doğrulama kümesi başarımıdır (video düzeyinde ayrılmış,
